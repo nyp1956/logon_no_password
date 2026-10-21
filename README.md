@@ -72,6 +72,7 @@ app.get('/api/private', logon.requireUser, (req, res) => {
 | `defaultLanguage` | `'en'` | `'en'` or `'da'`. |
 | `bindLinkToBrowser` | `false` | Only accept a magic link in the browser that requested it. Does not work with confirming on another device. See [Security](#security). |
 | `requireConfirmCode` | `false` | Show a 6-digit code in the requesting browser and require it on the confirm page, also from another device. See [Security](#security). |
+| `requestLinkLimit` | `{ max: 5, windowMinutes: 15 }` | Maximum `POST /request-link` calls per client IP in each window. Returns `429 rate_limited` above that. Use `false` to disable. See [Rate limiting](#rate-limiting). |
 | `logger` | `console` | Pass `null` to silence logs. |
 
 `createLogon()` returns `{ router, currentUser(req), requireUser, close() }`.
@@ -105,8 +106,18 @@ retires older unused links.
 
 ### Rate limiting
 
-The package does not rate limit `/request-link`. Add a limiter in your app, for example
-`express-rate-limit`, on the mount path before the router.
+`POST /request-link` is limited to 5 calls per client IP every 15 minutes by default.
+Calls above the limit return `429` with `rate_limited`, and no mail is sent. Change the
+limit with `requestLinkLimit`, or pass `false` to disable it:
+
+```js
+createLogon({ sendMail, requestLinkLimit: { max: 10, windowMinutes: 5 } });
+```
+
+The counters are kept in memory per process. With several server instances, each instance
+counts separately, so use a shared limiter at your proxy or gateway if you need a strict
+global limit. Behind a reverse proxy, set `app.set('trust proxy', 1)` so the limit applies
+per client and not per proxy address.
 
 ## Security
 
@@ -162,7 +173,7 @@ Also keep in mind:
   `publicBaseUrl` is `https` or the request is HTTPS. Set `publicBaseUrl` in production.
 - A session lasts up to `sessionDays` (365 by default) from sign-in. There is no
   inactivity timeout, so shorten `sessionDays` if that is required.
-- Rate limit `/request-link` (see above). Without it, anyone can trigger mail to any address.
+- Rate limiting on `/request-link` is on by default (see [Rate limiting](#rate-limiting)).
 
 ## Browser
 

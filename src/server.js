@@ -72,6 +72,29 @@ function fail(res, status, code, field) {
   return res.status(status).json({ error: field ? { code, field } : { code } });
 }
 
+/**
+ * Fixed-window counter per key. Returns true while the key is within `max` hits per window.
+ * Expired entries are swept at most once per window so the map stays bounded.
+ */
+function createHitLimiter({ max, windowMs }) {
+  const hits = new Map();
+  let lastSweep = Date.now();
+  return (key) => {
+    const now = Date.now();
+    if (now - lastSweep > windowMs) {
+      for (const [k, entry] of hits) if (entry.resetAt <= now) hits.delete(k);
+      lastSweep = now;
+    }
+    let entry = hits.get(key);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + windowMs };
+      hits.set(key, entry);
+    }
+    entry.count += 1;
+    return entry.count <= max;
+  };
+}
+
 function renderPage(language, title, body) {
   const m = getMessages(language);
   return `<!doctype html>
@@ -194,6 +217,7 @@ function validateProfile(body, fields) {
  * @param {{error: Function} | null} [options.logger=console] Set to null to silence mail errors.
  * @param {boolean} [options.bindLinkToBrowser=false] Only accept a link in the browser that requested it. Blocks login if someone else gets you to click the link. Does not work when the link is confirmed on another device, such as a phone.
  * @param {boolean} [options.requireConfirmCode=false] Show a 6-digit code to the requesting browser and require it when the link is confirmed, also from another device. The code is never sent by e-mail.
+ * @param {{max: number, windowMinutes: number} | false} [options.requestLinkLimit={max: 5, windowMinutes: 15}] Maximum POST /request-link calls per client IP in each window. Use false to disable. Counters are kept in memory per process.
  */
 export function createLogon(options = {}) {
   const {
@@ -209,10 +233,17 @@ export function createLogon(options = {}) {
     logger = console,
     bindLinkToBrowser = false,
     requireConfirmCode = false,
+    requestLinkLimit = { max: 5, windowMinutes: 15 },
   } = options;
 
   if (typeof sendMail !== 'function') {
     throw new TypeError('createLogon: sendMail must be a function');
+  }
+  if (requestLinkLimit !== false) {
+    const { max, windowMinutes } = requestLinkLimit ?? {};
+    if (!Number.isInteger(max) || max < 1 || !(windowMinutes > 0)) {
+      throw new TypeError('createLogon: requestLinkLimit must be false or {max >= 1, windowMinutes > 0}');
+    }
   }
 
   const normalizedFields = fields.map(normalizeField);
@@ -229,6 +260,10 @@ export function createLogon(options = {}) {
   const sessionMs = sessionDays * DAY_MS;
   const linkMs = linkMinutes * MINUTE_MS;
   const fallbackLanguage = pickLanguage(defaultLanguage);
+  const requestLimiter =
+    requestLinkLimit === false
+      ? null
+      : createHitLimiter({ max: requestLinkLimit.max, windowMs: requestLinkLimit.windowMinutes * MINUTE_MS });
 
   const stmt = {
     upsertUser: db.prepare(
@@ -372,6 +407,8 @@ export function createLogon(options = {}) {
   });
 
   router.post('/request-link', async (req, res) => {
+    if (requestLimiter && !requestLimiter(req.ip ?? 'unknown')) return fail(res, 429, 'rate_limited');
+
     const email = normalizeEmail(req.body?.email);
     if (!email) return fail(res, 422, 'invalid_email', 'email');
 

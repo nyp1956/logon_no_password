@@ -437,6 +437,42 @@ test('a missing browser id is a bad request', async () => {
   }
 });
 
+test('request-link is rate limited per client after the configured number of calls', async () => {
+  const ctx = await startServer({ requestLinkLimit: { max: 2, windowMinutes: 15 } });
+  try {
+    const client = makeClient(ctx.base);
+    const body = { email: 'anna@example.com', browserId: BROWSER_ID };
+    assert.equal((await client.request('/request-link', { method: 'POST', body })).status, 200);
+    assert.equal((await client.request('/request-link', { method: 'POST', body })).status, 200);
+    const limited = await client.request('/request-link', { method: 'POST', body });
+    assert.equal(limited.status, 429);
+    assert.equal(limited.data.error.code, 'rate_limited');
+    assert.equal(ctx.sent.length, 2);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('requestLinkLimit: false disables the request-link limiter', async () => {
+  const ctx = await startServer({ requestLinkLimit: false });
+  try {
+    const client = makeClient(ctx.base);
+    const body = { email: 'anna@example.com', browserId: BROWSER_ID };
+    for (let i = 0; i < 7; i += 1) {
+      assert.equal((await client.request('/request-link', { method: 'POST', body })).status, 200);
+    }
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('an invalid requestLinkLimit is rejected', () => {
+  assert.throws(
+    () => createLogon({ sendMail: async () => {}, database: ':memory:', logger: null, requestLinkLimit: { max: 0, windowMinutes: 15 } }),
+    TypeError,
+  );
+});
+
 test('a failing mail sender reports send_failed and creates no session', async () => {
   const ctx = await startServer({
     sendMail: async () => {
