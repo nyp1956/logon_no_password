@@ -1,4 +1,4 @@
-# @karst/logon_no_password
+# logon_no_password
 
 Passwordless login for Node.js apps. Users enter their e-mail, receive a single-use
 magic link, and confirm it. The browser that asked for the link is then signed in,
@@ -20,7 +20,7 @@ The package has two parts:
 ## Install
 
 ```bash
-npm install @karst/logon_no_password express
+npm install logon_no_password express
 ```
 
 `express` is a peer dependency (`^4.18.0 || ^5.0.0`). The package uses
@@ -30,7 +30,7 @@ npm install @karst/logon_no_password express
 
 ```js
 import express from 'express';
-import { createLogon } from '@karst/logon_no_password';
+import { createLogon } from 'logon_no_password';
 
 const app = express();
 
@@ -64,7 +64,7 @@ app.get('/api/private', logon.requireUser, (req, res) => {
 | `sendMail` | required | `async ({to, subject, text, link, language, appName})`. Throw to report a failed send. |
 | `database` | `'logon.db'` | File path, or an open `better-sqlite3` database instance. |
 | `appName` | `'App'` | Used in the mail and the page texts. |
-| `fields` | `[]` | Profile fields: `{name, label, required, maxLength, inputType, pattern}`. |
+| `fields` | `[]` | Profile fields: `{name, label, required, maxLength, pattern, inputType, autocomplete, placeholder}`. |
 | `sessionDays` | `365` | Session lifetime. |
 | `linkMinutes` | `30` | Magic link lifetime. |
 | `cookieName` | `'logon_session'` | Name of the session cookie. |
@@ -91,9 +91,9 @@ Mounted under the path you choose (`/api/logon` above):
 | --- | --- | --- |
 | GET | `/config` | App name, fields, and supported languages. |
 | GET | `/session` | `{ user }`, where `user` is `null` until the link is confirmed. |
-| POST | `/request-link` | Body `{ email, browserId, language }`. Sends the magic link. With `requireConfirmCode`, the response also includes `confirmCode`. |
+| POST | `/request-link` | Body `{ email, browserId, language }`. Sends the magic link and sets the session cookie. With `requireConfirmCode`, the response also includes `confirmCode`. |
 | GET | `/verify?token=` | Confirm page (HTML). Does not consume the token. |
-| POST | `/verify` | Confirms the token. Returns JSON, or HTML if `Accept: text/html`. |
+| POST | `/verify` | Body `{ token, code }`, where `code` is only needed with `requireConfirmCode`. Confirms the link. Returns JSON when the request is JSON or accepts `application/json`, otherwise an HTML page. |
 | POST | `/logout` | Ends the session. |
 | PATCH | `/profile` | Updates the profile fields. Requires a signed-in user. |
 
@@ -152,13 +152,14 @@ createLogon({ sendMail, requireConfirmCode: true /* ... */ });
 The options can be combined. `bindLinkToBrowser` is incompatible with phone confirmation, so
 do not combine it with a flow that expects the link to be opened on another device.
 
-The demo keeps the default (`false`). It reads `BIND_LINK_TO_BROWSER` and
-`REQUIRE_CONFIRM_CODE`, both `true` or unset. The system owner decides the trade-off.
+The demo keeps the defaults (`false`). Set `BIND_LINK_TO_BROWSER=true` or
+`REQUIRE_CONFIRM_CODE=true` to enable them. Any other value means off. The system owner
+decides the trade-off.
 
 Also keep in mind:
 
 - The session cookie is `httpOnly` and `sameSite=lax`. It is `secure` when
-  `publicBaseUrl` is `https`. Set `publicBaseUrl` in production.
+  `publicBaseUrl` is `https` or the request is HTTPS. Set `publicBaseUrl` in production.
 - A session lasts up to `sessionDays` (365 by default) from sign-in. There is no
   inactivity timeout, so shorten `sessionDays` if that is required.
 - Rate limit `/request-link` (see above). Without it, anyone can trigger mail to any address.
@@ -166,9 +167,9 @@ Also keep in mind:
 ## Browser
 
 ```js
-import { mountLogon } from '@karst/logon_no_password/client';
+import { mountLogon } from 'logon_no_password/client';
 // With a bundler, import the stylesheet. Without one, link it in your HTML.
-import '@karst/logon_no_password/styles.css';
+import 'logon_no_password/styles.css';
 
 const logon = mountLogon({
   baseUrl: '/api/logon',
@@ -186,7 +187,7 @@ const logon = mountLogon({
 | --- | --- | --- |
 | `baseUrl` | `'/api/logon'` | Where the server router is mounted. |
 | `allowGuest` | `true` | Shows a "continue as guest" option. |
-| `language` | navigator | Initial language. The user's choice is stored in localStorage. |
+| `language` | browser language, then `'en'` | Used until the user picks a language. The user's choice is stored in localStorage. |
 | `messages` | `{}` | Overrides for any text, per language (deep-merged). |
 | `onChange` | no-op | Called with `{ user, guest }` when the state changes. |
 | `trigger` | none | Element or selector that opens the dialog when clicked. |
@@ -202,7 +203,8 @@ server session. Use `requireUser` on the server for anything that must be protec
 
 ```bash
 npm install
-npm test
+npm test        # runs test/server.test.js
+npm run demo    # starts example/server.js
 ```
 
 ## License
