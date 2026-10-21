@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
@@ -13,8 +13,6 @@ concurrency:
 
 jobs:
   release:
-    # Skip the version bump commit made by this workflow, so it does not trigger itself.
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,16 +26,14 @@ jobs:
 
       - run: npm test
 
-      - name: Bump patch version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          npm version patch -m "chore(release): %s [skip ci]"
-
-      - name: Publish to npm
-        run: npm publish
+      - name: Publish to npm if this version is new
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Push version commit and tag
-        run: git push --follow-tags
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version > /dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published. Skipping."
+          else
+            npm publish
+          fi
