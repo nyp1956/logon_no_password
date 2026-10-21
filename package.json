@@ -36,6 +36,7 @@
     "express": "^4.18.0 || ^5.0.0"
   },
   "dependencies": {
+    "@nyp1956/logon_no_password": "^0.0.0-stage",
     "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
