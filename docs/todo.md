@@ -5,4 +5,3 @@ npm-scope: @nyp1956 er verificeret. Pakken findes på npm som @nyp1956/logon_no_
 Repository-felt: tilføjet i package.json (https://github.com/nyp1956/logon_no_password).
 Rate limiting: indbygget på /request-link (standard 5 forsøg pr. IP pr. 15 minutter, kan ændres med requestLinkLimit). Dokumenteret i README.
 
-test 3
