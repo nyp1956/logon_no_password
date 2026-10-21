@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Logon demo</title>
+    <link rel="stylesheet" href="/logon/src/styles.css" />
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+      pre { background: #f4f4f4; padding: 1rem; border-radius: 6px; overflow: auto; }
+      button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>Logon demo</h1>
+    <p>
+      <button id="login-button" type="button">Log in</button>
+      <button id="check-button" type="button">Call protected API</button>
+      <button id="logout-button" type="button">Log out</button>
+    </p>
+    <p id="state">Not signed in.</p>
+    <pre id="output">Output appears here.</pre>
+
+    <script type="module">
+      import { mountLogon } from '/logon/src/client.js';
+
+      const stateEl = document.getElementById('state');
+      const outputEl = document.getElementById('output');
+
+      const logon = mountLogon({
+        baseUrl: '/api/logon',
+        trigger: '#login-button',
+        allowGuest: true,
+        onChange: ({ user, guest }) => {
+          if (user) stateEl.textContent = `Signed in as ${user.email}`;
+          else if (guest) stateEl.textContent = 'Continuing as guest.';
+          else stateEl.textContent = 'Not signed in.';
+        },
+      });
+
+      document.getElementById('check-button').addEventListener('click', async () => {
+        const res = await fetch('/api/private', { credentials: 'include' });
+        outputEl.textContent = `${res.status} ${await res.text()}`;
+      });
+
+      document.getElementById('logout-button').addEventListener('click', async () => {
+        await logon.signOut();
+        outputEl.textContent = 'Signed out.';
+      });
+    </script>
+  </body>
+</html>

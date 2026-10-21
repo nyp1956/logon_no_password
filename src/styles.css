@@ -1,0 +1,119 @@
+.logon-dialog {
+  box-sizing: border-box;
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2328;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.logon-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.logon-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem 0.25rem;
+}
+
+.logon-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.logon-close {
+  border: 0;
+  background: transparent;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.logon-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem 1rem;
+}
+
+.logon-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.logon-form input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.logon-form input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.logon-form button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.logon-form button.logon-secondary {
+  background: #eef2f7;
+  color: #1f2328;
+}
+
+.logon-muted {
+  margin: 0;
+  color: #57606a;
+  font-size: 0.9rem;
+}
+
+.logon-code {
+  margin: 0.25rem 0 1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+}
+
+.logon-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+
+.logon-notice {
+  margin: 0;
+  color: #137333;
+  font-size: 0.9rem;
+}
+
+.logon-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 1.25rem 1rem;
+}
+
+.logon-language {
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #c9ced6;
+  border-radius: 6px;
+  background: #fff;
+}
