@@ -215,7 +215,7 @@ function validateProfile(body, fields) {
  * @param {string} [options.publicBaseUrl] Origin used in links, e.g. https://app.example.com. Recommended in production.
  * @param {string} [options.defaultLanguage='en']
  * @param {{error: Function} | null} [options.logger=console] Set to null to silence mail errors.
- * @param {boolean} [options.bindLinkToBrowser=false] Only accept a link in the browser that requested it. Blocks login if someone else gets you to click the link. Does not work when the link is confirmed on another device, such as a phone.
+ * @param {boolean} [options.bindLinkToBrowser=true] Only accept a link in the browser that requested it. Blocks login if someone else gets you to click the link. Does not work when the link is confirmed on another device, such as a phone; use requireConfirmCode for that. Set to false to accept the link in any browser.
  * @param {boolean} [options.requireConfirmCode=false] Show a 6-digit code to the requesting browser and require it when the link is confirmed, also from another device. The code is never sent by e-mail.
  * @param {{max: number, windowMinutes: number} | false} [options.requestLinkLimit={max: 5, windowMinutes: 15}] Maximum POST /request-link calls per client IP in each window. Use false to disable. Counters are kept in memory per process.
  */
@@ -231,7 +231,7 @@ export function createLogon(options = {}) {
     publicBaseUrl,
     defaultLanguage = 'en',
     logger = console,
-    bindLinkToBrowser = false,
+    bindLinkToBrowser = true,
     requireConfirmCode = false,
     requestLinkLimit = { max: 5, windowMinutes: 15 },
   } = options;

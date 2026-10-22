@@ -1,6 +1,6 @@
 {
   "name": "logon_no_password",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Passwordless e-mail magic-link login with device-bound sessions, profile editing and optional guest mode for Express apps.",
   "type": "module",
   "main": "./src/server.js",

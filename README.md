@@ -70,7 +70,7 @@ app.get('/api/private', logon.requireUser, (req, res) => {
 | `cookieName` | `'logon_session'` | Name of the session cookie. |
 | `publicBaseUrl` | request host | Base URL used in the magic link. **Set this in production.** |
 | `defaultLanguage` | `'en'` | `'en'` or `'da'`. |
-| `bindLinkToBrowser` | `false` | Only accept a magic link in the browser that requested it. Does not work with confirming on another device. See [Security](#security). |
+| `bindLinkToBrowser` | `true` | Only accept a magic link in the browser that requested it. Does not work with confirming on another device; use `requireConfirmCode` for that. Set `false` to accept the link in any browser. See [Security](#security). |
 | `requireConfirmCode` | `false` | Show a 6-digit code in the requesting browser and require it on the confirm page, also from another device. See [Security](#security). |
 | `requestLinkLimit` | `{ max: 5, windowMinutes: 15 }` | Maximum `POST /request-link` calls per client IP in each window. Returns `429 rate_limited` above that. Use `false` to disable. See [Rate limiting](#rate-limiting). |
 | `logger` | `console` | Pass `null` to silence logs. |
@@ -124,7 +124,15 @@ per client and not per proxy address.
 Login works like a magic link: anyone who can open the link signs in the browser that
 requested it, and the link is single-use and expires after `linkMinutes`.
 
-**Default behaviour (`bindLinkToBrowser: false`).** The link can be opened in any browser,
+**Default protection (`bindLinkToBrowser: true`).** The link is only accepted in the browser
+whose session cookie requested it. Opening it elsewhere returns `400 link_other_browser`,
+does not use up the link, and shows a message asking the user to open it in the original
+browser. This blocks login CSRF: an attacker who requests a link for a victim's email cannot
+get the victim's browser signed in as the victim. The cost is that the user cannot request a
+link on one device and confirm it on another, such as a phone. For that, use
+`requireConfirmCode` with `bindLinkToBrowser: false`.
+
+**Opt-out (`bindLinkToBrowser: false`).** The link can be opened in any browser,
 and that browser is then signed in. The requesting browser is signed in too, because it
 holds the session cookie. This makes it easy to confirm on a phone and keep working on a
 laptop, but it carries a risk:
@@ -135,17 +143,12 @@ laptop, but it carries a risk:
   does in that browser is recorded against the victim's account.
 - **Phishing.** A fake login page can ask for the link to be opened in the victim's browser.
 
-**Opt-in protection (`bindLinkToBrowser: true`).** The link is only accepted in the browser
-whose session cookie requested it. Opening it elsewhere returns `400 link_other_browser`,
-does not use up the link, and shows a message asking the user to open it in the original
-browser. The cost is that the user cannot request a link on one device and confirm it on
-another, so this option does not work with confirming on a phone.
-
 **Opt-in code protection (`requireConfirmCode: true`).** The requesting browser receives a
 6-digit code in the `/request-link` response, and the code is never put in the e-mail. The
 confirm page asks for the code, so the link only signs in when the person who requested it
 can read the code from their screen. This works when the link is opened on another device,
-such as a phone, because the user types the code in. A wrong code returns
+such as a phone, because the user types the code in. This needs `bindLinkToBrowser: false`,
+because the browser check would otherwise block the phone. A wrong code returns
 `400 link_code_invalid` and does not use up the link. After five wrong codes the link stops
 working. The code is stored only as a hash, bound to the link token.
 
@@ -155,17 +158,17 @@ still be tricked into typing it.
 Enable one of the options in your app if your application holds sensitive data:
 
 ```js
-createLogon({ sendMail, bindLinkToBrowser: true /* ... */ });
-// or, to keep phone confirmation working:
-createLogon({ sendMail, requireConfirmCode: true /* ... */ });
+createLogon({ sendMail /* bindLinkToBrowser is on by default */ });
+// For confirming on a phone, use the code and turn off the browser check:
+createLogon({ sendMail, bindLinkToBrowser: false, requireConfirmCode: true /* ... */ });
 ```
 
-The options can be combined. `bindLinkToBrowser` is incompatible with phone confirmation, so
-do not combine it with a flow that expects the link to be opened on another device.
+`bindLinkToBrowser` and confirming on another device cannot be combined without
+`requireConfirmCode`. Use the code-based setup above for that flow.
 
-The demo keeps the defaults (`false`). Set `BIND_LINK_TO_BROWSER=true` or
-`REQUIRE_CONFIRM_CODE=true` to enable them. Any other value means off. The system owner
-decides the trade-off.
+The demo uses the library default: the browser check is on unless `BIND_LINK_TO_BROWSER=false`.
+For phone confirmation, set `BIND_LINK_TO_BROWSER=false` and `REQUIRE_CONFIRM_CODE=true`.
+The system owner decides the trade-off.
 
 Also keep in mind:
 

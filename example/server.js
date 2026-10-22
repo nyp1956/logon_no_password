@@ -21,8 +21,8 @@ const transport = process.env.SMTP_HOST
     })
   : null;
 
-// BIND_LINK_TO_BROWSER=true accepts a magic link only in the browser that requested it.
-const bindLinkToBrowser = process.env.BIND_LINK_TO_BROWSER === 'true';
+// Accepts a magic link only in the browser that requested it. On by default; BIND_LINK_TO_BROWSER=false turns it off.
+const bindLinkToBrowser = process.env.BIND_LINK_TO_BROWSER !== 'false';
 // REQUIRE_CONFIRM_CODE=true shows a 6-digit code in the requesting browser that must be entered when confirming.
 const requireConfirmCode = process.env.REQUIRE_CONFIRM_CODE === 'true';
 

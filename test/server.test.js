@@ -153,8 +153,28 @@ test('a link can only be used once', async () => {
   }
 });
 
-test('by default a link can be verified from another browser', async () => {
+test('by default a link cannot be verified from another browser', async () => {
   const ctx = await startServer();
+  try {
+    const requester = makeClient(ctx.base);
+    const other = makeClient(ctx.base);
+    await requester.request('/request-link', { method: 'POST', body: { email: 'anna@example.com', browserId: BROWSER_ID } });
+    const rejected = await other.request('/verify', {
+      method: 'POST',
+      body: { token: tokenFrom(ctx.sent[0]) },
+      accept: 'application/json',
+    });
+    assert.equal(rejected.status, 400);
+    assert.equal(rejected.data.error.code, 'link_other_browser');
+    const session = await requester.request('/session');
+    assert.equal(session.data.user, null);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('bindLinkToBrowser: false lets a link be verified from another browser', async () => {
+  const ctx = await startServer({ bindLinkToBrowser: false });
   try {
     const requester = makeClient(ctx.base);
     const other = makeClient(ctx.base);
@@ -226,7 +246,7 @@ test('requireConfirmCode returns the code only to the requester and never in the
 });
 
 test('requireConfirmCode accepts the right code from another device', async () => {
-  const ctx = await startServer({ requireConfirmCode: true });
+  const ctx = await startServer({ requireConfirmCode: true, bindLinkToBrowser: false });
   try {
     const requester = makeClient(ctx.base);
     const phone = makeClient(ctx.base);
@@ -248,7 +268,7 @@ test('requireConfirmCode accepts the right code from another device', async () =
 });
 
 test('requireConfirmCode rejects a wrong code without consuming the link', async () => {
-  const ctx = await startServer({ requireConfirmCode: true });
+  const ctx = await startServer({ requireConfirmCode: true, bindLinkToBrowser: false });
   try {
     const requester = makeClient(ctx.base);
     const phone = makeClient(ctx.base);
@@ -280,7 +300,7 @@ test('requireConfirmCode rejects a wrong code without consuming the link', async
 });
 
 test('requireConfirmCode consumes the link after five wrong codes', async () => {
-  const ctx = await startServer({ requireConfirmCode: true });
+  const ctx = await startServer({ requireConfirmCode: true, bindLinkToBrowser: false });
   try {
     const requester = makeClient(ctx.base);
     const phone = makeClient(ctx.base);
@@ -398,7 +418,7 @@ test('a newer link retires the older one for the same browser', async () => {
 });
 
 test('confirming from another device still signs in the requesting browser', async () => {
-  const ctx = await startServer();
+  const ctx = await startServer({ bindLinkToBrowser: false });
   try {
     const browser = makeClient(ctx.base);
     const phone = makeClient(ctx.base);
